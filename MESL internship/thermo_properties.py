@@ -36,12 +36,9 @@ class ThermoProperties(NasaPolyCoeff):
         #================================================= 깁스 에너지 매서드
     def calc_Cp_each(self):
         t = self.t
+        t_Cp_calc = np.array([1, t, t*t, t*t*t, t*t*t*t])
         coeff = self.coeff
-        return 8.314 * (coeff[:, 0]
-                         + coeff[:, 1] * t
-                         + coeff[:, 2] * t * t
-                         + coeff[:, 3] * t * t * t
-                         + coeff[:, 4] * t * t * t * t)
+        return 8.314 * (coeff[:, :5]*t_Cp_calc).sum(axis=1)
 
     def calc_Cp_mix(self):
         mole_fraction = self.mole_fraction
@@ -55,19 +52,16 @@ class ThermoProperties(NasaPolyCoeff):
         coeff = self.coeff
         t_ref = self.t_ref
         t = self.t
-        return       8.314*(coeff[:, 0]*(t-t_ref)
-                           +coeff[:, 1]/2*(t*t-t_ref*t_ref)
-                           +coeff[:, 2]/3*(t*t*t-t_ref*t_ref*t_ref)
-                           +coeff[:, 3]/4*(t*t*t*t-t_ref*t_ref*t_ref*t_ref)
-                           +coeff[:, 4]/5*(t*t*t*t*t-t_ref*t_ref*t_ref*t_ref*t_ref))
-
+        t_delta_h_calc = np.array([t-t_ref, (t*t-t_ref*t_ref)/2, (t*t*t-t_ref*t_ref*t_ref)/3, (t*t*t*t-t_ref*t_ref*t_ref*t_ref)/4, (t*t*t*t*t-t_ref*t_ref*t_ref*t_ref*t_ref)/5])    
+        return       8.314*(coeff[:, :5]*t_delta_h_calc).sum(axis=1)
+                              
 
     def calc_h_each_mole(self):
         delta_h = self.delta_h
         h_f = self.h_f
         idx_comp = self.idx_comp
 
-        return np.array(h_f[idx_comp]+delta_h)
+        return h_f[idx_comp]+delta_h
 
     def calc_h(self):
         h_each_mole = self.h_each_mole
@@ -79,12 +73,8 @@ class ThermoProperties(NasaPolyCoeff):
     def calc_s_abs(self):
         coeff = self.coeff
         t= self.t
-        return 8.314*(coeff[:, 0]*math.log(t)
-                               + coeff[:, 1]*t
-                               + coeff[:, 2]/2*t*t
-                               + coeff[:, 3]/3*t*t*t
-                               + coeff[:, 4]/4*t*t*t*t
-                               + coeff[:, 6])
+        t_s_calc = np.array([math.log(t), t, t*t/2, t*t*t/3, t*t*t*t/4])
+        return 8.314*((coeff[:, :5]*t_s_calc).sum(axis=1) + coeff[:, 6])
 
 
     def calc_s_each_mole(self):
