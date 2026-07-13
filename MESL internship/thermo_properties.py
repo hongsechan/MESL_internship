@@ -3,8 +3,8 @@ import math
 from nasa_poly_coeff import NasaPolyCoeff
 
 class ThermoProperties(NasaPolyCoeff):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, comp_name=None, p=None, t_C=None, mole_fraction_percentage=None):
+        super().__init__(comp_name, p, t_C, mole_fraction_percentage)
         self.Cp_each = self.calc_Cp_each()
         self.Cp_mix = self.calc_Cp_mix()
 
@@ -52,7 +52,11 @@ class ThermoProperties(NasaPolyCoeff):
         coeff = self.coeff
         t_ref = self.t_ref
         t = self.t
-        t_delta_h_calc = np.array([t-t_ref, (t*t-t_ref*t_ref)/2, (t*t*t-t_ref*t_ref*t_ref)/3, (t*t*t*t-t_ref*t_ref*t_ref*t_ref)/4, (t*t*t*t*t-t_ref*t_ref*t_ref*t_ref*t_ref)/5])    
+        t_delta_h_calc = np.array([t-t_ref,
+                                    (t*t-t_ref*t_ref)/2,
+                                    (t*t*t-t_ref*t_ref*t_ref)/3,
+                                    (t*t*t*t-t_ref*t_ref*t_ref*t_ref)/4,
+                                    (t*t*t*t*t-t_ref*t_ref*t_ref*t_ref*t_ref)/5])    
         return       8.314*(coeff[:, :5]*t_delta_h_calc).sum(axis=1)
                               
 
@@ -65,6 +69,21 @@ class ThermoProperties(NasaPolyCoeff):
 
     def calc_h(self):
         h_each_mole = self.h_each_mole
+        mole_fraction = self.mole_fraction
+        M_mix = self.M_mix
+        return np.sum(h_each_mole*mole_fraction)/M_mix
+    
+    def h_at(self, T):
+        coeff = self.coeff_at(T)
+        T_delta_h_calc = np.array([T-self.t_ref,
+                                    (T*T-self.t_ref*self.t_ref)/2,
+                                    (T*T*T-self.t_ref*self.t_ref*self.t_ref)/3,
+                                    (T*T*T*T-self.t_ref*self.t_ref*self.t_ref*self.t_ref)/4,
+                                    (T*T*T*T*T-self.t_ref*self.t_ref*self.t_ref*self.t_ref*self.t_ref)/5])   
+        delta_h = 8.314*(coeff[:, :5]*T_delta_h_calc).sum(axis=1)
+        h_f = self.h_f
+        idx_comp = self.idx_comp
+        h_each_mole = h_f[idx_comp]+delta_h
         mole_fraction = self.mole_fraction
         M_mix = self.M_mix
         return np.sum(h_each_mole*mole_fraction)/M_mix
@@ -112,6 +131,7 @@ if __name__ == '__main__':
     a = ThermoProperties()
     print(a.Cp_mix)
     print(a.h)
+    print(a.h_at(1500))
     print(a.s)
     print(a.mu)
     print(a.g)

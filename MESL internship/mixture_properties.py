@@ -2,9 +2,12 @@ import numpy as np
 from base import BasicInfo
 
 class MixtureProperties(BasicInfo):
-    def __init__(self):
-        super().__init__()
-        self.mole_fraction = self.calc_mole_fraction()
+    def __init__(self, comp_name=None, p=None, t_C=None, mole_fraction_percentage=None):
+        super().__init__(comp_name, p, t_C)
+        if mole_fraction_percentage is None:
+            self.mole_fraction = self.calc_mole_fraction()
+        else:
+            self.mole_fraction = np.array(mole_fraction_percentage) * 0.01
 #====================================================================== 몰분율 매서드
         self.M = np.array([
             2.016,  # H2 몰질량

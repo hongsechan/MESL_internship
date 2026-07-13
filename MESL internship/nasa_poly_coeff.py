@@ -2,8 +2,8 @@ import numpy as np
 from mixture_properties import MixtureProperties
 
 class NasaPolyCoeff(MixtureProperties):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, comp_name=None, p=None, t_C=None, mole_fraction_percentage=None):
+        super().__init__(comp_name, p, t_C, mole_fraction_percentage)
         self.coeff_data = np.array([
         [
          [3.33727920E+00, -4.94024731E-05, 4.99456778E-07, -1.79566394E-10, 2.00255376E-14,
@@ -55,6 +55,13 @@ class NasaPolyCoeff(MixtureProperties):
     def coefficient_selection(self):
         t = self.t
         if t >= 1000:
+            return self.coeff_data[self.idx_comp, 0, :]
+        else :
+            return self.coeff_data[self.idx_comp, 1, :]
+        
+        
+    def coeff_at(self, T):
+        if T >= 1000:
             return self.coeff_data[self.idx_comp, 0, :]
         else :
             return self.coeff_data[self.idx_comp, 1, :]
