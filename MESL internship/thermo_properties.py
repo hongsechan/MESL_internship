@@ -108,6 +108,17 @@ class ThermoProperties(NasaPolyCoeff):
         mole_fraction = self.mole_fraction
         M_mix = self.M_mix
         return np.sum(s_each_mole*mole_fraction)/M_mix
+    
+    def s_at(self, T, p):
+        coeff = self.coeff_at(T)
+        T_s_calc = np.array([math.log(T), T, T*T/2, T*T*T/3, T*T*T*T/4])
+        s_abs = 8.314*((coeff[:, :5]*T_s_calc).sum(axis=1) + coeff[:, 6])
+        partial_p = p * self.mole_fraction
+        p_ref = self.p_ref
+        s_each_mole = s_abs - 8.314 * np.log(partial_p/p_ref)
+        mole_fraction = self.mole_fraction
+        M_mix = self.M_mix
+        return np.sum(s_each_mole*mole_fraction)/M_mix
 
 #======================================================= 엔트로피 계산
 
