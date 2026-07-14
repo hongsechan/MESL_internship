@@ -135,9 +135,17 @@ class Compression():
 
 if __name__ == '__main__':
     a= Compression()
-    print(f"Outlet temperature (isentropic): {a.Ts_out_C:.2f} °C")
+    
+    if a.Ts_out_C is not None:
+        print(f"Outlet temperature (isentropic): {a.Ts_out_C:.2f} °C")
+    else: pass
+    
     print(f"Outlet temperature (actual): {a.T_out_C:.2f} °C")
-    print(f"Outlet enthalpy (isentropic): {a.hs_out:.2f} kJ/kg")
+    
+    if a.hs_out is not None:
+        print(f"Outlet enthalpy (isentropic): {a.hs_out:.2f} kJ/kg")
+    else: pass
+
     print(f"Outlet enthalpy (actual): {a.h_out:.2f} kJ/kg")
     print(f"Power input: {a.W_dot:.2f} kW")
     print(f"Outlet mole fraction: {a.outlet_mole_fraction}")
