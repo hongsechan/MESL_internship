@@ -1,6 +1,6 @@
 from thermo_properties import ThermoProperties
 from compression import Compression
-from pump import Pump
+
 
 def print_result(title, case):
     print("=" * 60)
@@ -12,13 +12,15 @@ def print_result(title, case):
         print(f"  {name}: {y:.6f}")
     print(f"Outlet pressure: {case.p_out:.2f} atm")
 
-    if hasattr(case, "Ts_out"):
+    if case.Ts_out is not None:
         print(f"Outlet temperature (isentropic): {case.Ts_out_C:.2f} °C")
+    else: pass    
     
     print(f"Outlet temperature (actual): {case.T_out_C:.2f} °C")
 
-    if hasattr(case, "hs_out"):
+    if case.hs_out is not None:
         print(f"Outlet enthalpy (isentropic): {case.hs_out:.2f} kJ/kg")
+    else: pass    
 
     print(f"Outlet enthalpy (actual): {case.h_out:.2f} kJ/kg")
     print(f"Power input: {case.W_dot:.2f} kW")
@@ -48,7 +50,7 @@ water_liquid = ThermoProperties(
     mole_fraction_percentage=[100]
 )
 
-case2 = Pump(
+case2 = Compression(
     stream=water_liquid,
     p_out=10,
     mass_flow=10,

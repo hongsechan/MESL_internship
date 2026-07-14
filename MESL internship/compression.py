@@ -25,17 +25,51 @@ class Compression():
         self.M_out = self.stream.M_mix
         self.outlet_mole_fraction = self.stream.mole_fraction
 
+        if self.liquid_water():
+            self.caculate_pump()
+        else:
+            self.calculate_compressor()
+    
+    def liquid_water(self):
+            T_C = self.stream.t - 273.15 
+            return self.stream.comp_name == ["H2O"] and len(self.stream.comp_name) == 1 and T_C < 100 
+    #-------------------------------------------------------------- liquid water 인지 확인
+    def caculate_pump(self):
+        self.rho = 997
+        self.v = 1/self.rho
+        self.cp_liquid = 4.18
+    
+        w_p_s = self.v * (self.p_out - self.stream.p) * 101.325
+        self.w_p= w_p_s / self.efficiency
+
+        self.h_out = self.stream.h + self.w_p
+
+        delta_T = self.w_p / self.cp_liquid
+        self.T_out = self.stream.t + delta_T
+        self.T_out_C = self.T_out - 273.15
+
+        self.W_dot = self.mass_flow * self.w_p
+
+        self.Ts_out = None
+        self.Ts_out_C = None
+        self.hs_out = None
+    #-------------------------------------------------------------- pump 계산    
+
+    def calculate_compressor(self): 
+        
         self.Ts_out = self.calculate_Ts_out()
         self.Ts_out_C = self.Ts_out - 273.15
-    #--------------------------------------------------------------- 출구 등엔트로피 온도 매서드    
+        #--------------------------------------------------------------- 출구 등엔트로피 온도 매서드    
         self.hs_out = self.stream.h_at(self.Ts_out)
         self.h_out = self.stream.h + (self.hs_out - self.stream.h) / self.efficiency
 
-    #-------------------------------------------------------------- 출구 엔탈피 매서드    
+        #-------------------------------------------------------------- 출구 엔탈피 매서드    
         self.T_out = self.calculate_T_at_h(self.h_out)
         self.T_out_C = self.T_out - 273.15
-    #-------------------------------------------------------------- 출구 온도 매서드
+        #-------------------------------------------------------------- 출구 온도 매서드
         self.W_dot = self.mass_flow * (self.h_out - self.stream.h)
+
+        #-------------------------------------------------------------- 압축기 전력 매서드
 
     def entropy_balance(self, T):
         return self.stream.s_at(T, self.p_out) - self.stream.s
