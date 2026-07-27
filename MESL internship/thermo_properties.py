@@ -1,6 +1,7 @@
 import numpy as np
 import math
 from nasa_poly_coeff import NasaPolyCoeff
+import constants as const
 
 class ThermoProperties(NasaPolyCoeff):
     def __init__(self, comp_name=None, p=None, t_C=None, mole_fraction_percentage=None):
@@ -9,7 +10,7 @@ class ThermoProperties(NasaPolyCoeff):
         self.Cp_mix = self.calc_Cp_mix()
 
         #================================================== Cp 매서드
-        self.t_ref = 298.15
+        self.t_ref = const.T_ref
         self.h_f = np.array([
             0,  # H2
             -241820,  # H2O
@@ -24,7 +25,7 @@ class ThermoProperties(NasaPolyCoeff):
         self.h = self.calc_h()
         #================================================== 엔탈피 매서드
 
-        self.p_ref = 1
+        self.p_ref = const.P_ref
         self.s_abs = self.calc_s_abs()
         self.s_each_mole = self.calc_s_each_mole()
         self.s = self.calc_s()
@@ -38,7 +39,7 @@ class ThermoProperties(NasaPolyCoeff):
         t = self.t
         t_Cp_calc = np.array([1, t, t*t, t*t*t, t*t*t*t])
         coeff = self.coeff
-        return 8.314 * (coeff[:, :5]*t_Cp_calc).sum(axis=1)
+        return const.R_universal * (coeff[:, :5]*t_Cp_calc).sum(axis=1)
 
     def calc_Cp_mix(self):
         mole_fraction = self.mole_fraction
@@ -57,7 +58,7 @@ class ThermoProperties(NasaPolyCoeff):
                                     (t*t*t-t_ref*t_ref*t_ref)/3,
                                     (t*t*t*t-t_ref*t_ref*t_ref*t_ref)/4,
                                     (t*t*t*t*t-t_ref*t_ref*t_ref*t_ref*t_ref)/5])    
-        return       8.314*(coeff[:, :5]*t_delta_h_calc).sum(axis=1)
+        return       const.R_universal*(coeff[:, :5]*t_delta_h_calc).sum(axis=1)
                               
 
     def calc_h_each_mole(self):
@@ -80,7 +81,7 @@ class ThermoProperties(NasaPolyCoeff):
                                     (T*T*T-self.t_ref*self.t_ref*self.t_ref)/3,
                                     (T*T*T*T-self.t_ref*self.t_ref*self.t_ref*self.t_ref)/4,
                                     (T*T*T*T*T-self.t_ref*self.t_ref*self.t_ref*self.t_ref*self.t_ref)/5])   
-        delta_h = 8.314*(coeff[:, :5]*T_delta_h_calc).sum(axis=1)
+        delta_h = const.R_universal*(coeff[:, :5]*T_delta_h_calc).sum(axis=1)
         h_f = self.h_f
         idx_comp = self.idx_comp
         h_each_mole = h_f[idx_comp]+delta_h
@@ -93,14 +94,14 @@ class ThermoProperties(NasaPolyCoeff):
         coeff = self.coeff
         t= self.t
         t_s_calc = np.array([math.log(t), t, t*t/2, t*t*t/3, t*t*t*t/4])
-        return 8.314*((coeff[:, :5]*t_s_calc).sum(axis=1) + coeff[:, 6])
+        return const.R_universal*((coeff[:, :5]*t_s_calc).sum(axis=1) + coeff[:, 6])
 
 
     def calc_s_each_mole(self):
         partial_p = self.partial_p
         s_abs = self.s_abs
         p_ref = self.p_ref
-        return s_abs - 8.314 * np.log(partial_p/p_ref)
+        return s_abs - const.R_universal * np.log(partial_p/p_ref)
 
 
     def calc_s(self):
@@ -112,10 +113,10 @@ class ThermoProperties(NasaPolyCoeff):
     def s_at(self, T, p):
         coeff = self.coeff_at(T)
         T_s_calc = np.array([math.log(T), T, T*T/2, T*T*T/3, T*T*T*T/4])
-        s_abs = 8.314*((coeff[:, :5]*T_s_calc).sum(axis=1) + coeff[:, 6])
+        s_abs = const.R_universal*((coeff[:, :5]*T_s_calc).sum(axis=1) + coeff[:, 6])
         partial_p = p * self.mole_fraction
         p_ref = self.p_ref
-        s_each_mole = s_abs - 8.314 * np.log(partial_p/p_ref)
+        s_each_mole = s_abs - const.R_universal * np.log(partial_p/p_ref)
         mole_fraction = self.mole_fraction
         M_mix = self.M_mix
         return np.sum(s_each_mole*mole_fraction)/M_mix

@@ -1,5 +1,6 @@
 from thermo_properties import ThermoProperties  
 import numpy as np
+import constants as const
 
 class Mixing():
     def __init__(self, stream1=None, mass_flow1=None, stream2=None, mass_flow2=None):
@@ -39,7 +40,7 @@ class Mixing():
         if T_out is None:
             self.T_out = None
         else:
-            self.T_out = T_out -273.15
+            self.T_out = T_out - const.kelvin_offset
     #----------------------------------------------------------------- 출구 혼합물의 온도 매서드
         self.p_out = min(self.stream1.p, self.stream2.p)
     #----------------------------------------------------------------- 출구 혼합물의 압력 매서드
@@ -73,7 +74,7 @@ class Mixing():
                                     (T*T*T-t_ref*t_ref*t_ref)/3,
                                     (T*T*T*T-t_ref*t_ref*t_ref*t_ref)/4,
                                     (T*T*T*T*T-t_ref*t_ref*t_ref*t_ref*t_ref)/5])   
-        delta_h = 8.314*(coeff[:, :5]*T_delta_h_calc).sum(axis=1)
+        delta_h = const.R_universal*(coeff[:, :5]*T_delta_h_calc).sum(axis=1)
 
         h_f = self.stream1.h_f
         idx_comp = self.outlet_idx_comp

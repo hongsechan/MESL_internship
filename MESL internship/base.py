@@ -1,4 +1,5 @@
 import numpy as np
+import constants as const
 
 class BasicInfo:
     def __init__(self, comp_name=None, p=None, t_C=None):
@@ -13,7 +14,7 @@ class BasicInfo:
     
         self.comp_name = comp_name
         self.p = p
-        self.t = t_C + 273.15
+        self.t = t_C + const.kelvin_offset
         self.element = np.array(["H2", "H2O", "CO", "CO2", "O2", "N2", "CH4"])
         self.comp = np.array(comp_name)
 

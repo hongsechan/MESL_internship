@@ -1,4 +1,5 @@
 from thermo_properties import ThermoProperties
+import constants as const
 
 class Compression():
     def __init__(self, stream=None, p_out=None, efficiency=None, mass_flow=None):
@@ -31,7 +32,7 @@ class Compression():
             self.calculate_compressor()
     
     def liquid_water(self):
-            T_C = self.stream.t - 273.15 
+            T_C = self.stream.t - const.kelvin_offset 
             return self.stream.comp_name == ["H2O"] and len(self.stream.comp_name) == 1 and T_C < 100 
     #-------------------------------------------------------------- liquid water 인지 확인
     def caculate_pump(self):
@@ -39,14 +40,14 @@ class Compression():
         self.v = 1/self.rho
         self.cp_liquid = 4.18
     
-        w_p_s = self.v * (self.p_out - self.stream.p) * 101.325
+        w_p_s = self.v * (self.p_out - self.stream.p) * const.atm_to_kPa
         self.w_p= w_p_s / self.efficiency
 
         self.h_out = self.stream.h + self.w_p
 
         delta_T = self.w_p / self.cp_liquid
         self.T_out = self.stream.t + delta_T
-        self.T_out_C = self.T_out - 273.15
+        self.T_out_C = self.T_out - const.kelvin_offset
 
         self.W_dot = self.mass_flow * self.w_p
 
@@ -58,14 +59,14 @@ class Compression():
     def calculate_compressor(self): 
         
         self.Ts_out = self.calculate_Ts_out()
-        self.Ts_out_C = self.Ts_out - 273.15
+        self.Ts_out_C = self.Ts_out - const.kelvin_offset
         #--------------------------------------------------------------- 출구 등엔트로피 온도 매서드    
         self.hs_out = self.stream.h_at(self.Ts_out)
         self.h_out = self.stream.h + (self.hs_out - self.stream.h) / self.efficiency
 
         #-------------------------------------------------------------- 출구 엔탈피 매서드    
         self.T_out = self.calculate_T_at_h(self.h_out)
-        self.T_out_C = self.T_out - 273.15
+        self.T_out_C = self.T_out - const.kelvin_offset
         #-------------------------------------------------------------- 출구 온도 매서드
         self.W_dot = self.mass_flow * (self.h_out - self.stream.h)
 
