@@ -15,7 +15,7 @@ def run_case(name, inputs):
     print(f"Specific Heat at Constant Pressure: {a.Cp_mix:.6f} (kJ/kmol·K)")
     print(f"Enthalpy: {a.h:.6f} (kJ/kg)")
     print(f"Entropy: {a.s:.6f} (kJ/kg·K)")
-    print(f"Gibbs Free Energy: {a.g:.6f} (kJ/kg)")
+    print(f"Gibbs Free Energy: {a.g:.6f} (kJ/kmol)")
     print("\n" + "-"*50 + "\n")
 
 dry_air_inputs = [

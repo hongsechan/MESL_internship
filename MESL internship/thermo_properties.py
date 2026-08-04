@@ -127,7 +127,7 @@ class ThermoProperties(NasaPolyCoeff):
         return self.h_each_mole - self.t * self.s_each_mole
 
     def calc_g(self):
-        return np.sum(self.mu*self.mole_fraction)/self.M_mix
+        return np.sum(self.mu*self.mole_fraction)
 
 
 
