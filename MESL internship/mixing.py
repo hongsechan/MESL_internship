@@ -66,22 +66,10 @@ class Mixing():
         else:
             coeff = self.stream1.coeff_data[self.outlet_idx_comp, 1, :]
 
-        
-        t_ref = self.stream1.t_ref
-
-        T_delta_h_calc = np.array([T-t_ref,
-                                    (T*T-t_ref*t_ref)/2,
-                                    (T*T*T-t_ref*t_ref*t_ref)/3,
-                                    (T*T*T*T-t_ref*t_ref*t_ref*t_ref)/4,
-                                    (T*T*T*T*T-t_ref*t_ref*t_ref*t_ref*t_ref)/5])   
-        delta_h = const.R_universal*(coeff[:, :5]*T_delta_h_calc).sum(axis=1)
-
-        h_f = self.stream1.h_f
-        idx_comp = self.outlet_idx_comp
-        h_each_mole = h_f[idx_comp]+delta_h
-        mole_fraction = self.outlet_mole_fraction_selected
-        M_mix = self.M_out
-        return np.sum(h_each_mole*mole_fraction)/M_mix
+        T_h_calc = np.array([T, T*T/2, T*T*T/3, T*T*T*T/4, T*T*T*T*T/5, 1])  
+        h_each_mole = const.R_universal*(coeff[:, :6]*T_h_calc).sum(axis=1) 
+        return np.sum(h_each_mole* self.outlet_mole_fraction_selected) / self.M_out
+    
     #----------------------------------------------------------------- 출구 혼합물의 엔탈피 계산
 
     def energy_balance(self, T_out):

@@ -10,17 +10,7 @@ class ThermoProperties(NasaPolyCoeff):
         self.Cp_mix = self.calc_Cp_mix()
 
         #================================================== Cp 매서드
-        self.t_ref = const.T_ref
-        self.h_f = np.array([
-            0,  # H2
-            -241820,  # H2O
-            -110530,  # CO
-            -393520,  # CO2
-            0,  # O2
-            0,  # N2
-            -74850  # CH4
-        ])
-        self.delta_h = self.calc_delta_h()
+
         self.h_each_mole = self.calc_h_each_mole()
         self.h = self.calc_h()
         #================================================== 엔탈피 매서드
@@ -49,82 +39,61 @@ class ThermoProperties(NasaPolyCoeff):
         return np.sum(Cp_each*mole_fraction)/M_mix
 
 #==========================================================Cp 계산
-    def calc_delta_h(self):
-        coeff = self.coeff
-        t_ref = self.t_ref
-        t = self.t
-        t_delta_h_calc = np.array([t-t_ref,
-                                    (t*t-t_ref*t_ref)/2,
-                                    (t*t*t-t_ref*t_ref*t_ref)/3,
-                                    (t*t*t*t-t_ref*t_ref*t_ref*t_ref)/4,
-                                    (t*t*t*t*t-t_ref*t_ref*t_ref*t_ref*t_ref)/5])    
-        return       const.R_universal*(coeff[:, :5]*t_delta_h_calc).sum(axis=1)
+    def h_abs_at(self, T):
+            coeff = self.coeff_at(T)
+            T_h_calc = np.array([T, T*T/2, T*T*T/3, T*T*T*T/4, T*T*T*T*T/5, 1])  
+            return const.R_universal*(coeff[:, :6]*T_h_calc).sum(axis=1)
                               
 
     def calc_h_each_mole(self):
-        delta_h = self.delta_h
-        h_f = self.h_f
-        idx_comp = self.idx_comp
-
-        return h_f[idx_comp]+delta_h
+        return self.h_abs_at(self.t)
 
     def calc_h(self):
         h_each_mole = self.h_each_mole
         mole_fraction = self.mole_fraction
         M_mix = self.M_mix
         return np.sum(h_each_mole*mole_fraction)/M_mix
-    
+
     def h_at(self, T):
-        coeff = self.coeff_at(T)
-        T_delta_h_calc = np.array([T-self.t_ref,
-                                    (T*T-self.t_ref*self.t_ref)/2,
-                                    (T*T*T-self.t_ref*self.t_ref*self.t_ref)/3,
-                                    (T*T*T*T-self.t_ref*self.t_ref*self.t_ref*self.t_ref)/4,
-                                    (T*T*T*T*T-self.t_ref*self.t_ref*self.t_ref*self.t_ref*self.t_ref)/5])   
-        delta_h = const.R_universal*(coeff[:, :5]*T_delta_h_calc).sum(axis=1)
-        h_f = self.h_f
-        idx_comp = self.idx_comp
-        h_each_mole = h_f[idx_comp]+delta_h
+        h_each_mole = self.h_abs_at(T)    
         mole_fraction = self.mole_fraction
         M_mix = self.M_mix
         return np.sum(h_each_mole*mole_fraction)/M_mix
 #======================================================================== 엔탈피 계산
-
+    def s_abs_at(self, T):
+        coeff = self.coeff_at(T)
+        T_s_calc = np.array([math.log(T), T, T*T/2, T*T*T/3, T*T*T*T/4])
+        return const.R_universal*((coeff[:, :5]*T_s_calc).sum(axis=1) + coeff[:, 6])
+    
     def calc_s_abs(self):
-        coeff = self.coeff
-        t= self.t
-        t_s_calc = np.array([math.log(t), t, t*t/2, t*t*t/3, t*t*t*t/4])
-        return const.R_universal*((coeff[:, :5]*t_s_calc).sum(axis=1) + coeff[:, 6])
+        return self.s_abs_at(self.t)
 
-
-    def calc_s_each_mole(self):
-        partial_p = self.partial_p
-        s_abs = self.s_abs
+    def s_each_at(self, T, p):
+        s_abs = self.s_abs_at(T)
+        partial_p = p * self.mole_fraction
         p_ref = self.p_ref
         return s_abs - const.R_universal * np.log(partial_p/p_ref)
 
+    def calc_s_each_mole(self):
+        return self.s_each_at(self.t, self.p)
+
+    def s_at(self, T, p):
+        s_each_mole = self.s_each_at(T, p)
+        mole_fraction = self.mole_fraction
+        M_mix = self.M_mix
+        return np.sum(s_each_mole*mole_fraction)/M_mix
 
     def calc_s(self):
-        s_each_mole = self.s_each_mole
-        mole_fraction = self.mole_fraction
-        M_mix = self.M_mix
-        return np.sum(s_each_mole*mole_fraction)/M_mix
-    
-    def s_at(self, T, p):
-        coeff = self.coeff_at(T)
-        T_s_calc = np.array([math.log(T), T, T*T/2, T*T*T/3, T*T*T*T/4])
-        s_abs = const.R_universal*((coeff[:, :5]*T_s_calc).sum(axis=1) + coeff[:, 6])
-        partial_p = p * self.mole_fraction
-        p_ref = self.p_ref
-        s_each_mole = s_abs - const.R_universal * np.log(partial_p/p_ref)
-        mole_fraction = self.mole_fraction
-        M_mix = self.M_mix
-        return np.sum(s_each_mole*mole_fraction)/M_mix
+        return self.s_at(self.t, self.p)
+
 
 #======================================================= 엔트로피 계산
 
     def calc_mu(self):
         return self.h_each_mole - self.t * self.s_each_mole
+
+    def g_abs_at(self, T):
+        return self.h_abs_at(T)  - T * self.s_abs_at(T)
 
     def calc_g(self):
         return np.sum(self.mu*self.mole_fraction)
