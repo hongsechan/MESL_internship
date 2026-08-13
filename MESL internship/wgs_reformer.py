@@ -85,7 +85,7 @@ class WGSReformer():
         delta_G = np.sum(self.reaction_coefficients * g_abs_at_T)
         K_eq = np.exp(-delta_G / (const.R_universal * T))
         return K_eq
-    
+
     def reaction_quotient(self, x):
         mole_outflow = self.calculate_outlet_mole_flows(x)
         activity_mask = self.reaction_coefficients != 0
@@ -109,7 +109,7 @@ class WGSReformer():
         Q = self.reaction_quotient(x)
         return np.log(Q) - np.log(K_eq)
 
-    # 연관 잔차 계산
+    # 연관 잔차 정리
     def coupled_residual(self, T, x):
         self.validate_state(T, x)
 
