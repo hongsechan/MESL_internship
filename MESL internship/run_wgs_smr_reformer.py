@@ -5,7 +5,7 @@ def print_result(case):
     print("=" * 60)
     print(f"Equilibrium outlet temperature: {case.T_out_C:.2f} °C")
     print(f"Reaction progress of WGS: {case.x:.6f}")
-    print(f"Reaction progress SMR: {case.y:.6f}")
+    print(f"Reaction progress of SMR: {case.y:.6f}")
     print(f"Outlet mole flows: ")
     for name, z in zip(case.stream_basis.comp_name,
                        case.outlet_mole_flows):
@@ -26,25 +26,25 @@ def print_result(case):
 
 
 case1 = WGS_SMR_Reformer(
-    mass_flow_CO=10,
-    mass_flow_H2O=5,
-    mass_flow_CH4=5,
+    mass_flow_CO=30,
+    mass_flow_H2O=70,
+    mass_flow_CH4=20,
     stream_CO=ThermoProperties(
         comp_name=["CO"],
         p=1,
-        t_C=300,
+        t_C=1000,
         mole_fraction_percentage=[100]
     ),
     stream_H2O=ThermoProperties(
         comp_name=["H2O"],
         p=1,
-        t_C=300,
+        t_C=1000,
         mole_fraction_percentage=[100]
     ),
         stream_CH4=ThermoProperties(
         comp_name=["CH4"],
         p=1,
-        t_C=300,
+        t_C=1000,
         mole_fraction_percentage=[100]
     ),
 )
