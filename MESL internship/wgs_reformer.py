@@ -41,7 +41,7 @@ class WGSReformer():
                                             t_C = 25,
                                             mole_fraction_percentage=[25, 25, 25, 25])    
             
-        self.reaction_coefficients = rxn.WGS_reaction_coefficients[self.stream_basis.idx_comp]
+        self.WGS_reaction_coefficients = rxn.WGS_reaction_coefficients[self.stream_basis.idx_comp]
         self.inlet_energy = (self.mass_flow_CO * self.stream_CO.h) + (self.mass_flow_H2O * self.stream_H2O.h)
 
         # 평형 출구 온도와 반응진행도
@@ -61,13 +61,14 @@ class WGSReformer():
         if T <= 0:
             raise ValueError("Temperature must be greater than 0 K.")
 
-        x_max = min(self.mole_inletflow_CO, self.mole_inletflow_H2O)
-        if not 0 < x < x_max:
-            raise ValueError(f"Extent of reaction x must be between 0 and {x_max} kmol/s.")
+        mole_outflow = self.calculate_outlet_mole_flows(x)
+
+        if np.any(mole_outflow <= 0):
+            raise ValueError("All outlet mole flows must be greater than zero.")
 
     # 출구 물질 몰
     def calculate_outlet_mole_flows(self, x):   
-        return self.inlet_mole_flows + x*self.reaction_coefficients   
+        return self.inlet_mole_flows + x*self.WGS_reaction_coefficients   
     
     # 에너지 계산
     def outlet_energy(self, T, x):
@@ -79,52 +80,48 @@ class WGSReformer():
         return self.outlet_energy(T, x) - self.inlet_energy
     
     # 평형 계산    
-    def equilibrium_constant(self, T):
-        g_abs_at_T = self.stream_basis.g_abs_at(T)
+    def log_equilibrium_constant(self, rxn_coeff, T):
+        delta_G = np.sum(rxn_coeff *self.stream_basis.g_abs_at(T))
+        ln_K = -delta_G / (const.R_universal * T)
+        return ln_K
 
-        delta_G = np.sum(self.reaction_coefficients * g_abs_at_T)
-        K_eq = np.exp(-delta_G / (const.R_universal * T))
-        return K_eq
-
-    def reaction_quotient(self, x):
+    def log_reaction_quotient(self, rxn_coeff, x):
         mole_outflow = self.calculate_outlet_mole_flows(x)
-        activity_mask = self.reaction_coefficients != 0
-
-        if np.any(mole_outflow[activity_mask] <= 0):
-            raise ValueError("Mole outflow for a reactant or product is non-positive, cannot compute reaction quotient.")
-        
+        activity_mask = rxn_coeff != 0
         total_moles = np.sum(mole_outflow)
-        if total_moles <= 0:
-            raise ValueError("Total moles in the outlet flow is non-positive, cannot compute mole fractions.")
-        
-        mole_fraction = mole_outflow / total_moles
         p_term = self.p_out / const.P_ref
 
-        activity = mole_fraction * p_term 
-        Q = np.prod(activity[activity_mask] ** self.reaction_coefficients[activity_mask]) 
-        return Q
+        react_coeff = rxn_coeff [activity_mask]
+        mole_react = mole_outflow [activity_mask]
 
-    def equilibrium_residual(self, T, x):
-        K_eq = self.equilibrium_constant(T)
-        Q = self.reaction_quotient(x)
-        return np.log(Q) - np.log(K_eq)
+        mole_fraction = mole_react / total_moles
+        activity = mole_fraction * p_term 
+
+        ln_Q = np.sum(react_coeff*np.log(activity))
+        return ln_Q
+
+    def calculate_equilibrium_residual(self, rxn_coeff, T, x):
+        ln_K = self.log_equilibrium_constant(rxn_coeff, T)
+        ln_Q = self.log_reaction_quotient(rxn_coeff, x)
+        return ln_Q -ln_K
 
     # 연관 잔차 정리
     def coupled_residual(self, T, x):
-        self.validate_state(T, x)
 
+        WGS_equilibrium_residual = self.calculate_equilibrium_residual(self.WGS_reaction_coefficients, T, x)
         energy_scale = max(abs(self.inlet_energy), 1.0) 
 
-        return np.array([self.energy_residual(T, x) / energy_scale, self.equilibrium_residual(T, x) ])
+        return np.array([self.energy_residual(T, x) / energy_scale, WGS_equilibrium_residual])
     
     # 수치적 야코비안 계산
     def numerical_jacobian(self, T, x):
         dT = max(T*1e-4, 1e-3)
 
-        x_max = min(self.mole_inletflow_CO, self.mole_inletflow_H2O)
-        dx_base = max(x_max*1e-5, 1e-10)
-        distance_to_bounds = min(x, x_max - x)
-        dx = min(dx_base, distance_to_bounds * 0.5)
+        x_lower = 0.0
+        x_upper = min(self.mole_inletflow_CO, self.mole_inletflow_H2O)
+        dx_base = max((x_upper-x_lower)*1e-5, 1e-10)
+        dx_distance = min(x - x_lower, x_upper - x)
+        dx = min(dx_base, dx_distance * 0.5)
 
         df_dT = (self.coupled_residual(T + dT, x) - self.coupled_residual(T - dT, x)) / (2 * dT)
         df_dx = (self.coupled_residual(T, x + dx) - self.coupled_residual(T, x - dx)) / (2 * dx)
@@ -144,6 +141,8 @@ class WGSReformer():
 
         for _ in range(max_iter):
             T, x = variables
+            self.validate_state(T, x)
+
             residuals = self.coupled_residual(T, x)
             residual_norm = np.linalg.norm(residuals)
 
