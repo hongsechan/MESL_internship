@@ -26,19 +26,12 @@ def print_result(case):
 
 
 case1 = WGSReformer(
-    mass_flow_CO=10,
-    mass_flow_H2O=5,
-    stream_CO=ThermoProperties(
-        comp_name=["CO"],
+    mass_flow=10,
+    stream=ThermoProperties(
+        comp_name=["H2O", "CO"],
         p=1,
         t_C=300,
-        mole_fraction_percentage=[100]
-    ),
-    stream_H2O=ThermoProperties(
-        comp_name=["H2O"],
-        p=1,
-        t_C=300,
-        mole_fraction_percentage=[100]
+        mole_fraction_percentage=[30, 70]
     )
-)
+    )
 print_result(case1)    

@@ -4,45 +4,46 @@ import constants as const
 import reaction as rxn
 
 class WGSReformer():
-    def __init__(self, mass_flow_CO = None, mass_flow_H2O = None, stream_CO = None, stream_H2O = None):
-        if mass_flow_CO is None:
-            self.mass_flow_CO = float(input("Enter the mass flow rate of CO (kg/s): "))
+    def __init__(self, mass_flow = None, stream = None):
+        if mass_flow is None:
+            self.mass_flow = float(input("Enter the mass flow rate (kg/s): "))
         else:
-            self.mass_flow_CO = mass_flow_CO
+            self.mass_flow = mass_flow
 
-        if mass_flow_H2O is None:
-            self.mass_flow_H2O = float(input("Enter the mass flow rate of H2O (kg/s): "))    
+        if stream is None:
+            self.stream = ThermoProperties()
         else:
-            self.mass_flow_H2O = mass_flow_H2O
+            self.stream = stream
 
-        if stream_CO is None:
-            self.stream_CO = ThermoProperties()
-        else:
-            self.stream_CO = stream_CO
+        self.inlet_mole_total = self.mass_flow/self.stream.M_mix
 
-        if stream_H2O is None:
-            self.stream_H2O = ThermoProperties()
-        else:
-            self.stream_H2O = stream_H2O
+        component_mole_flows = self.inlet_mole_total*self.stream.mole_fraction
+        inlet_by_element = np.zeros(len(self.stream.element))
+        inlet_by_element[self.stream.idx_comp] = component_mole_flows
+
+        idx_CO = np.where(
+            self.stream.element == "CO"
+        )[0][0]
+
+        idx_H2O = np.where(
+            self.stream.element == "H2O"
+        )[0][0]
+
+        self.mole_inletflow_CO = inlet_by_element[idx_CO]
+        self.mole_inletflow_H2O = inlet_by_element[idx_H2O]
 
 
-        self.mole_inletflow_CO = self.mass_flow_CO / self.stream_CO.M_mix
-        self.mole_inletflow_H2O = self.mass_flow_H2O / self.stream_H2O.M_mix
-        self.p_out = min(self.stream_CO.p, self.stream_H2O.p)
-
-        self.inlet_mole_flows = np.array([
-            0, 
-            0, 
-            self.mole_inletflow_CO, 
-            self.mole_inletflow_H2O])
-
+        self.p_out = self.stream.p
+        
         self.stream_basis = ThermoProperties(comp_name=["H2", "CO2", "CO", "H2O"],
                                             p=self.p_out,
                                             t_C = 25,
                                             mole_fraction_percentage=[25, 25, 25, 25])    
-            
+
+        self.inlet_mole_flows = inlet_by_element[self.stream_basis.idx_comp]
         self.WGS_reaction_coefficients = rxn.WGS_reaction_coefficients[self.stream_basis.idx_comp]
-        self.inlet_energy = (self.mass_flow_CO * self.stream_CO.h) + (self.mass_flow_H2O * self.stream_H2O.h)
+
+        self.inlet_energy = np.sum(component_mole_flows*self.stream.h_each_mole)
 
         # 평형 출구 온도와 반응진행도
         self.T_out, self.x = self.solve_equilibrium()
@@ -132,7 +133,7 @@ class WGSReformer():
     # 뉴턴-랩슨 방법을 이용한 연속 방정식 풀이    
     def solve_equilibrium(self, T_guess=None, x_guess=None, tol=1e-8, max_iter=100):
         if T_guess is None:
-            T_guess = (self.stream_CO.t + self.stream_H2O.t) / 2
+            T_guess = self.stream.t
 
         if x_guess is None:
             x_guess = min(self.mole_inletflow_CO, self.mole_inletflow_H2O)*0.5

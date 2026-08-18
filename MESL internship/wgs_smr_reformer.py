@@ -4,60 +4,51 @@ import constants as const
 import reaction as rxn
 
 class WGS_SMR_Reformer():
-    def __init__(self, mass_flow_CO = None, mass_flow_H2O=None, mass_flow_CH4=None, stream_CO=None, stream_H2O=None, stream_CH4=None):
-        if mass_flow_CO is None:
-            self.mass_flow_CO = float(input("Enter the mass flow rate of CO (kg/s): "))
+    def __init__(self, mass_flow = None, stream = None):
+        if mass_flow is None:
+            self.mass_flow = float(input("Enter the mass flow rate (kg/s): "))
         else:
-            self.mass_flow_CO = mass_flow_CO    
+            self.mass_flow = mass_flow
 
-        if mass_flow_CH4 is None:
-            self.mass_flow_CH4 = float(input("Enter the mass flow rate of CH4 (kg/s): "))
+        if stream is None:
+            self.stream = ThermoProperties()
         else:
-            self.mass_flow_CH4 = mass_flow_CH4
+            self.stream = stream
 
-        if mass_flow_H2O is None:
-            self.mass_flow_H2O = float(input("Enter the mass flow rate of H2O (kg/s): "))    
-        else:
-            self.mass_flow_H2O = mass_flow_H2O
+        self.inlet_mole_total = self.mass_flow/self.stream.M_mix
 
-        if stream_CO is None:
-            self.stream_CO = ThermoProperties()
-        else:
-            self.stream_CO = stream_CO
-            
-        if stream_CH4 is None:
-            self.stream_CH4 = ThermoProperties()
-        else:
-            self.stream_CH4 = stream_CH4
+        component_mole_flows = self.inlet_mole_total*self.stream.mole_fraction
+        inlet_by_element = np.zeros(len(self.stream.element))
+        inlet_by_element[self.stream.idx_comp] = component_mole_flows
 
-        if stream_H2O is None:
-            self.stream_H2O = ThermoProperties()
-        else:
-            self.stream_H2O = stream_H2O
+        idx_CO = np.where(
+            self.stream.element == "CO"
+        )[0][0]
 
-        self.mole_inletflow_CO = self.mass_flow_CO / self.stream_CO.M_mix
-        self.mole_inletflow_H2O = self.mass_flow_H2O / self.stream_H2O.M_mix
-        self.mole_inletflow_CH4 = self.mass_flow_CH4 / self.stream_CH4.M_mix
+        idx_H2O = np.where(
+            self.stream.element == "H2O"
+        )[0][0]
 
-        self.p_out = min(self.stream_CH4.p, self.stream_H2O.p, self.stream_CO.p)
+        idx_CH4 = np.where(
+            self.stream.element == "CH4"
+        )[0][0]
 
-        self.inlet_mole_flows = np.array([
-            0, 
-            0,
-            self.mole_inletflow_CO,
-            self.mole_inletflow_H2O, 
-            self.mole_inletflow_CH4,
-            ])
+        self.mole_inletflow_CO = inlet_by_element[idx_CO]
+        self.mole_inletflow_H2O = inlet_by_element[idx_H2O]    
+        self.mole_inletflow_CH4 = inlet_by_element[idx_CH4]
+
+        self.p_out = self.stream.p
 
         self.stream_basis = ThermoProperties(comp_name=["H2", "CO2","CO", "H2O", "CH4"],
                                             p=self.p_out,
                                             t_C=25,
                                             mole_fraction_percentage=[20, 20, 20, 20, 20])    
+        self.inlet_mole_flows = inlet_by_element[self.stream_basis.idx_comp]
 
         self.WGS_reaction_coefficients = rxn.WGS_reaction_coefficients[self.stream_basis.idx_comp] 
         self.SMR_reaction_coefficients = rxn.SMR_reaction_coefficients[self.stream_basis.idx_comp] 
 
-        self.inlet_energy = (self.mass_flow_CO * self.stream_CO.h) + (self.mass_flow_H2O * self.stream_H2O.h) + (self.mass_flow_CH4 * self.stream_CH4.h) 
+        self.inlet_energy = np.sum(component_mole_flows*self.stream.h_each_mole)
 
 
         # 평형 출구 온도와 반응진행도
@@ -161,7 +152,7 @@ class WGS_SMR_Reformer():
 
     # 뉴텁-랩슨 방법
     def solve_equilibrium(self, tol = 1e-8, max_iter = 100):
-        T_guess = (self.stream_CO.t + self.stream_H2O.t +self.stream_CH4.t)/3
+        T_guess = self.stream.t
         y_guess = min(self.mole_inletflow_H2O, self.mole_inletflow_CH4)*0.5
         x_guess = min(self.mole_inletflow_CO + y_guess, self.mole_inletflow_H2O - y_guess)*0.5
 
