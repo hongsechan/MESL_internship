@@ -24,6 +24,7 @@ class Mixing():
         else:
             self.mass_flow2 = mass_flow2
 
+        self.mass_flow_out = self.mass_flow1 + self.mass_flow2
         self.mole_flow1 = self.mass_flow1 / self.stream1.M_mix
         self.mole_flow2 = self.mass_flow2 / self.stream2.M_mix
 
@@ -44,6 +45,7 @@ class Mixing():
     #----------------------------------------------------------------- 출구 혼합물의 온도 매서드
         self.p_out = min(self.stream1.p, self.stream2.p)
     #----------------------------------------------------------------- 출구 혼합물의 압력 매서드
+        self.stream_out = ThermoProperties(comp_name=self.stream1.element[self.outlet_idx_comp], p=self.p_out, t_C=self.T_out, mole_fraction_percentage=self.outlet_mole_fraction_selected*100)
 
     def calculate_outlet_mole_flow_each(self):
         outlet_mole_flow_each = np.zeros(len(self.stream1.element))
