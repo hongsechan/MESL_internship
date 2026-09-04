@@ -46,6 +46,7 @@ class Mixing():
         self.p_out = min(self.stream1.p, self.stream2.p)
     #----------------------------------------------------------------- 출구 혼합물의 압력 매서드
         self.stream_out = ThermoProperties(comp_name=self.stream1.element[self.outlet_idx_comp], p=self.p_out, t_C=self.T_out, mole_fraction_percentage=self.outlet_mole_fraction_selected*100)
+    #----------------------------------------------------------------- 출구 혼합물의 ThermoProperties 매서드    
 
     def calculate_outlet_mole_flow_each(self):
         outlet_mole_flow_each = np.zeros(len(self.stream1.element))
