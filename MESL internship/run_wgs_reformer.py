@@ -4,7 +4,7 @@ from thermo_properties import ThermoProperties
 def print_result(case):
     print("=" * 60)
     print(f"Equilibrium outlet temperature: {case.T_out_C:.2f} °C")
-    print(f"Reaction progress (x): {case.x:.6f}")
+    print(f"Reaction progress (x): {case.x:.6f} kmol/s")
     print(f"Outlet mole flows: ")
     for name, y in zip(case.stream_basis.comp_name,
                        case.outlet_mole_flows):
