@@ -32,7 +32,8 @@ class EOS(MixtureProperties):
         eos_data = EOSData()
         self.data = eos_data.data[self.idx_comp]
         self.Tc = self.data[:, 1]
-        self.Pc = self.data[:, 2]     # Pa
+        self.Pc_kPa = self.data[:, 2]  # kPa in EOSData
+        self.Pc = self.Pc_kPa * 1000.0  # Pa for SI a and b calculations
         self.omega = self.data[:, 3]
        
         self.alpha = self.calc_alpha()
@@ -45,7 +46,15 @@ class EOS(MixtureProperties):
 
         self.a = self.mole_fraction @ self.aij @ self.mole_fraction
         self.b = self.mole_fraction @ self.b_pure
-    
+
+        self.eos_A = self.a * self.p / (const.R_universal*const.R_universal * self.t*self.t)
+        self.eos_B = self.b * self.p / (const.R_universal * self.t)
+
+        self.eos_u = np.array([0.0, 1.0, 2.0])  # vdW, SRK, PR
+        self.eos_w = np.array([0.0, 0.0, -1.0])  # vdW, SRK, PR
+
+        self.z = self.solve_cubic_equation(self.eos_A, self.eos_B)
+
     def calc_alpha(self):
         if self.eos_type == "vdW":
             return np.ones_like(self.Tc)
@@ -75,7 +84,14 @@ class EOS(MixtureProperties):
     def calc_b_pure(self):
         return self.eos_coeff[1] * const.R_universal * self.Tc / self.Pc
 
-
+    def solve_cubic_equation(self, A, B):
+        coeffs = [1.0, 
+                -(1.0 + B - self.eos_u[self.idx_eos]), 
+                A - self.eos_u[self.idx_eos]*B - (self.eos_u[self.idx_eos]-self.eos_w[self.idx_eos])*B*B ,
+                -(A*B - self.eos_w[self.idx_eos]*B*B - self.eos_w[self.idx_eos]*B*B*B)]
+        roots = np.roots(coeffs)
+        real_roots = roots[np.isreal(roots)].real
+        return np.max(real_roots)
 
 
 if __name__ == "__main__":
