@@ -26,12 +26,12 @@ def print_result(case):
 
 
 case1 = WGS_SMR_Reformer(
-    mass_flow =100,
+    mass_flow =10,
     stream =ThermoProperties(
-        comp_name=["CO", "H2O", "CH4"],
+        comp_name=[ "H2O", "CH4"],
         p=1,
         t_C=1000,
-        mole_fraction_percentage=[30, 30, 40]
+        mole_fraction_percentage=[75, 25]
     ))
 
 print_result(case1)    
