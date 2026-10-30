@@ -29,16 +29,19 @@ class EOS(MixtureProperties):
         ])
         self.eos_coeff = eos_coeff_data[self.idx_eos]
 
+        self.p = self.p * const.atm_to_kPa  # atm → kPa
         eos_data = EOSData()
         self.data = eos_data.data[self.idx_comp]
         self.Tc = self.data[:, 1]
-        self.Pc_kPa = self.data[:, 2]  # kPa in EOSData
-        self.Pc = self.Pc_kPa * 1000.0  # Pa for SI a and b calculations
+        self.Pc = self.data[:, 2]     # kPa
         self.omega = self.data[:, 3]
+
+        self.a_c = self.calc_a_c()  # kPa·m⁶/kmol²   
+        self.b_c = self.calc_b_c()  # m³/kmol
        
         self.alpha = self.calc_alpha()
-        self.a_pure = self.calc_a_pure()  # Pa·m⁶/mol²
-        self.b_pure = self.calc_b_pure()  # m³/mol
+        self.a_pure = self.a_c*self.alpha  # kPa·m⁶/kmol²
+        self.b_pure = self.b_c  # m³/kmol
 
         self.kij = EOSData().kij_data[self.idx_eos][np.ix_(self.idx_comp, self.idx_comp)]
 
@@ -54,6 +57,11 @@ class EOS(MixtureProperties):
         self.eos_w = np.array([0.0, 0.0, -1.0])  # vdW, SRK, PR
 
         self.z = self.solve_cubic_equation(self.eos_A, self.eos_B)
+        self.v = self.z * const.R_universal * self.t / self.p  # m³/kmol
+
+        self.da_pure_dT = self.calc_da_pure_dT()
+        self.daij_dT = self.calc_daij_dT()
+        self.da_dT = self.mole_fraction @ self.daij_dT @ self.mole_fraction
 
     def calc_alpha(self):
         if self.eos_type == "vdW":
@@ -74,24 +82,47 @@ class EOS(MixtureProperties):
         else:
             raise ValueError("EOS type must be vdW, SRK, or PR.")
 
-        m = m_array @ omega_array
-        return (1 + m * (1 - np.sqrt(self.t / self.Tc)))**2
-  
-        
-    def calc_a_pure(self):
-        return self.eos_coeff[0] * (const.R_universal*const.R_universal) * (self.Tc*self.Tc) *self.alpha / (self.Pc)
+        self.m = m_array @ omega_array
+        return (1 + self.m * (1 - np.sqrt(self.t / self.Tc)))**2
 
-    def calc_b_pure(self):
+    def calc_a_c(self):
+        return self.eos_coeff[0] * (const.R_universal*const.R_universal) * (self.Tc*self.Tc) / (self.Pc)
+    
+    def calc_b_c(self):
         return self.eos_coeff[1] * const.R_universal * self.Tc / self.Pc
 
+    
     def solve_cubic_equation(self, A, B):
-        coeffs = [1.0, 
-                -(1.0 + B - self.eos_u[self.idx_eos]), 
-                A - self.eos_u[self.idx_eos]*B - (self.eos_u[self.idx_eos]-self.eos_w[self.idx_eos])*B*B ,
-                -(A*B - self.eos_w[self.idx_eos]*B*B - self.eos_w[self.idx_eos]*B*B*B)]
-        roots = np.roots(coeffs)
-        real_roots = roots[np.isreal(roots)].real
-        return np.max(real_roots)
+        u = self.eos_u[self.idx_eos]
+        w = self.eos_w[self.idx_eos]
+        coeffs = [
+            1.0,
+            -(1.0 + (1.0 - u) * B),
+            A - u * B - (u - w) * B**2,
+            -A * B - w * B**2 - w * B**3,
+        ]
+        z_roots = np.roots(coeffs)
+        z_real = z_roots[np.isreal(z_roots)].real  
+        return np.max(z_real)  # Return the largest real root 
+
+    def calc_da_pure_dT(self):  
+        if self.eos_type == "vdW":
+            return np.zeros_like(self.Tc)
+
+        elif self.eos_type in ["SRK", "PR"]:
+            return -self.a_c * self.m * (1 + self.m * (1 - np.sqrt(self.t / self.Tc))) / (self.Tc * np.sqrt(self.t / self.Tc))
+
+    def calc_daij_dT(self):
+        ai = self.a_pure[:, None]
+        aj = self.a_pure[None, :]
+        dai = self.da_pure_dT[:, None]
+        daj = self.da_pure_dT[None, :]
+
+        return (1.0 - self.kij) * (
+            aj * dai + ai * daj
+        ) / (2.0 * np.sqrt(ai * aj))
+
+
 
 
 if __name__ == "__main__":
@@ -135,6 +166,6 @@ if __name__ == "__main__":
 
         print("kij:")
         print(state.kij)
-        print(f"a_mix = {state.a:.8e} Pa·m⁶/mol²")
-        print(f"b_mix = {state.b:.8e} m³/mol")
+        print(f"a_mix = {state.a:.8e} kPa·m⁶/kmol²")
+        print(f"b_mix = {state.b:.8e} m³/kmol")
 
